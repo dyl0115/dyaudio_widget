@@ -1,0 +1,56 @@
+name: Build APK and Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Create release tag
+        id: vars
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)
+          BUILD=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f2)
+          SHA_SHORT=$(git rev-parse --short HEAD)
+          TAG="v${VERSION}+${BUILD}-${SHA_SHORT}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "apk_name=dyaudio-widget-${TAG}.apk" >> "$GITHUB_OUTPUT"
+
+      - name: Rename APK
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk "${{ steps.vars.outputs.apk_name }}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.vars.outputs.tag }}
+          name: ${{ steps.vars.outputs.tag }}
+          files: ${{ steps.vars.outputs.apk_name }}
+          generate_release_notes: true
