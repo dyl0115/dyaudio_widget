@@ -6,7 +6,9 @@ plugins {
 
 android {
     namespace = "com.example.dyaudio_widget"
-    compileSdk = flutter.compileSdkVersion
+    // permission_handler_android requires compileSdk 37; flutter.compileSdkVersion
+    // (36) is not high enough yet, so pin it explicitly.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
