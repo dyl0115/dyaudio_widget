@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="audio_widget_description">탭 한 번으로 녹음을 시작/중지하는 위젯</string>
-    <string name="audio_widget_label_idle">탭하여 녹음 시작</string>
-    <string name="audio_widget_label_recording">녹음 중… 탭하여 중지</string>
+    <string name="audio_widget_title">음성 녹음</string>
+    <string name="audio_widget_label_idle">대기 중 · 탭하여 시작</string>
+    <string name="audio_widget_label_recording">녹음 중 · 탭하여 중지</string>
     <string name="audio_widget_label_no_permission">탭하여 마이크 권한 허용</string>
 </resources>

@@ -51,20 +51,26 @@ class AudioWidgetProvider : AppWidgetProvider() {
             val hasPermission = RecordingController.hasMicPermission(context)
             val isRecording = hasPermission && RecordingController.isRecording(context)
 
-            when {
-                !hasPermission -> {
-                    views.setImageViewResource(R.id.widget_icon, R.drawable.ic_mic_off)
-                    views.setTextViewText(R.id.widget_label, context.getString(R.string.audio_widget_label_no_permission))
-                }
-                isRecording -> {
-                    views.setImageViewResource(R.id.widget_icon, R.drawable.ic_mic_on)
-                    views.setTextViewText(R.id.widget_label, context.getString(R.string.audio_widget_label_recording))
-                }
-                else -> {
-                    views.setImageViewResource(R.id.widget_icon, R.drawable.ic_mic_off)
-                    views.setTextViewText(R.id.widget_label, context.getString(R.string.audio_widget_label_idle))
-                }
+            val (cardBg, badgeBg, label) = when {
+                !hasPermission -> Triple(
+                    R.drawable.widget_card_no_permission,
+                    R.drawable.icon_badge_no_permission,
+                    context.getString(R.string.audio_widget_label_no_permission)
+                )
+                isRecording -> Triple(
+                    R.drawable.widget_card_recording,
+                    R.drawable.icon_badge_recording,
+                    context.getString(R.string.audio_widget_label_recording)
+                )
+                else -> Triple(
+                    R.drawable.widget_card_idle,
+                    R.drawable.icon_badge_idle,
+                    context.getString(R.string.audio_widget_label_idle)
+                )
             }
+            views.setInt(R.id.widget_root, "setBackgroundResource", cardBg)
+            views.setInt(R.id.widget_icon_badge, "setBackgroundResource", badgeBg)
+            views.setTextViewText(R.id.widget_label, label)
 
             val toggleIntent = Intent(context, AudioWidgetProvider::class.java)
                 .setAction(ACTION_TOGGLE_RECORDING)

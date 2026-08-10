@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import 'recordings_page.dart';
+
 void main() {
   runApp(const MyApp());
 }
@@ -96,7 +98,20 @@ class _RecorderHomePageState extends State<RecorderHomePage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('오디오 녹음 위젯')),
+      appBar: AppBar(
+        title: const Text('오디오 녹음 위젯'),
+        actions: [
+          IconButton(
+            tooltip: '녹음 파일',
+            icon: const Icon(Icons.folder_open),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const RecordingsListPage()),
+              );
+            },
+          ),
+        ],
+      ),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32),
