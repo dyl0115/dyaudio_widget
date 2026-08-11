@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:home_widget/home_widget.dart';
 
@@ -38,17 +38,18 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> {
     }
   }
 
+  static const _audioTypeGroup = XTypeGroup(
+    label: 'audio',
+    extensions: ['m4a', 'mp3', 'wav', 'aac', 'm4b', 'ogg', 'flac'],
+  );
+
   Future<void> _pickAudioFile() async {
     setState(() => _picking = true);
     try {
-      final result = await FilePicker.pickFiles(
-        type: FileType.audio,
-        withData: false,
-      );
-      final pickedPath = result?.files.single.path;
-      if (pickedPath == null) return;
+      final picked = await openFile(acceptedTypeGroups: const [_audioTypeGroup]);
+      if (picked == null) return;
 
-      final source = File(pickedPath);
+      final source = File(picked.path);
       final dir = await recordingsDirectory();
       final fileName =
           'UPLOAD_${DateTime.now().millisecondsSinceEpoch}_${source.uri.pathSegments.last}';
