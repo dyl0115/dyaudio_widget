@@ -6,7 +6,9 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.widget.RemoteViews
+import es.antonborri.home_widget.HomeWidgetBackgroundIntent
 
 class AudioWidgetProvider : AppWidgetProvider() {
 
@@ -19,6 +21,12 @@ class AudioWidgetProvider : AppWidgetProvider() {
                 val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
                 launchIntent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
                 launchIntent?.let { context.startActivity(it) }
+            } else if (newState == false) {
+                // 방금 녹음을 멈췄다: 앱을 열지 않고도 백그라운드 Flutter 엔진을 띄워
+                // 업로드 -> 삭제 -> 위젯 갱신까지 수행하도록 Dart 콜백을 호출한다.
+                HomeWidgetBackgroundIntent
+                    .getBroadcast(context, Uri.parse("dyaudio://transcribe"))
+                    .send()
             }
             updateAllWidgets(context)
         }
@@ -79,9 +87,9 @@ class AudioWidgetProvider : AppWidgetProvider() {
                 .getString("transcript_text", null)
             if (!transcript.isNullOrBlank()) {
                 views.setTextViewText(R.id.widget_transcript_preview, transcript)
-                views.setViewVisibility(R.id.widget_transcript_preview, android.view.View.VISIBLE)
+                views.setViewVisibility(R.id.widget_transcript_scroll, android.view.View.VISIBLE)
             } else {
-                views.setViewVisibility(R.id.widget_transcript_preview, android.view.View.GONE)
+                views.setViewVisibility(R.id.widget_transcript_scroll, android.view.View.GONE)
             }
 
             val toggleIntent = Intent(context, AudioWidgetProvider::class.java)

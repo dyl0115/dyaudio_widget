@@ -56,20 +56,25 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- 최근 변환 결과 미리보기. 결과가 없으면 코드에서 GONE 처리됨 -->
-    <TextView
-        android:id="@+id/widget_transcript_preview"
+    <!-- 최근 변환 결과 전체를 손가락 스크롤로 볼 수 있는 영역.
+         결과가 없으면 코드에서 GONE 처리됨 -->
+    <ScrollView
+        android:id="@+id/widget_transcript_scroll"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:layout_marginTop="10dp"
-        android:paddingTop="10dp"
-        android:background="@null"
-        android:textColor="#E6FFFFFF"
-        android:textSize="13sp"
-        android:lineSpacingExtra="2dp"
-        android:maxLines="4"
-        android:ellipsize="end"
-        android:visibility="gone"
-        tools:text="여기에 최근 변환된 텍스트 미리보기가 표시됩니다." />
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/widget_transcript_preview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="10dp"
+            android:textColor="#E6FFFFFF"
+            android:textSize="13sp"
+            android:lineSpacingExtra="2dp"
+            tools:text="여기에 최근 변환된 텍스트 전체가 표시되고, 길면 이 영역 안에서 스크롤할 수 있습니다." />
+    </ScrollView>
 
 </LinearLayout>

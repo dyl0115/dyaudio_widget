@@ -1,17 +1,30 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:home_widget/home_widget.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import 'models/transcript.dart';
 import 'screens/settings_screen.dart';
 import 'services/listnr_client.dart';
+import 'services/recording_upload.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // 위젯을 앱을 열지 않고 직접 탭했을 때도 이 콜백이 백그라운드 Flutter
+  // 엔진에서 실행된다. (AudioWidgetProvider.kt가 정지 시 이 URI로 브로드캐스트)
+  await HomeWidget.registerInteractivityCallback(backgroundCallback);
   runApp(const MyApp());
+}
+
+@pragma('vm:entry-point')
+Future<void> backgroundCallback(Uri? uri) async {
+  if (uri?.host != 'transcribe') return;
+  try {
+    await uploadLatestRecording();
+  } catch (_) {
+    // 실패해도 원본 파일은 지워지지 않으니, 다음에 앱을 열었을 때
+    // 다시 시도할 수 있다.
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -112,9 +125,10 @@ class _RecorderHomePageState extends State<RecorderHomePage>
     }
   }
 
-  /// 녹음이 저장되는 디렉토리에서 가장 최근 파일을 찾아 서버로 보내고,
-  /// 전송에 성공하면 기기에서 즉시 삭제한다. 실패하면 재시도할 수 있도록
-  /// 파일을 남겨둔다.
+  /// 녹음 정지 직후 앱이 포그라운드에 있을 때 호출된다. 위젯을 직접 탭해서
+  /// 앱 없이 정지한 경우는 [backgroundCallback]이 대신 처리한다 — 이때는
+  /// 다음에 앱을 열면 [_refreshState] 대신 여기로 다시 진입하지 않으므로,
+  /// 화면에는 반영되지 않고 위젯에만 결과가 남는다.
   Future<void> _transcribeLatestRecording() async {
     setState(() {
       _isTranscribing = true;
@@ -126,17 +140,10 @@ class _RecorderHomePageState extends State<RecorderHomePage>
       // 걸릴 수 있어 짧게 대기한다.
       await Future.delayed(const Duration(milliseconds: 300));
 
-      final file = await _latestRecordingFile();
-      if (file == null) {
+      final result = await uploadLatestRecording();
+      if (result == null) {
         throw Exception('녹음 파일을 찾을 수 없습니다.');
       }
-
-      final result = await ListnrClient.transcribe(file);
-      await file.delete();
-
-      // 홈 화면 위젯에도 최근 변환 결과를 반영한다.
-      await HomeWidget.saveWidgetData<String>('transcript_text', result.text);
-      await HomeWidget.updateWidget(androidName: 'AudioWidgetProvider');
 
       if (mounted) {
         setState(() => _transcript = result);
@@ -152,22 +159,6 @@ class _RecorderHomePageState extends State<RecorderHomePage>
         setState(() => _isTranscribing = false);
       }
     }
-  }
-
-  Future<File?> _latestRecordingFile() async {
-    final base = await getExternalStorageDirectory();
-    if (base == null) return null;
-    final dir = Directory('${base.path}/recordings');
-    if (!await dir.exists()) return null;
-
-    final files = dir
-        .listSync()
-        .whereType<File>()
-        .where((f) => f.path.endsWith('.m4a'))
-        .toList()
-      ..sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
-
-    return files.isEmpty ? null : files.first;
   }
 
   @override
