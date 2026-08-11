@@ -1,30 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:home_widget/home_widget.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import 'models/transcript.dart';
+import 'screens/recordings_list_screen.dart';
 import 'screens/settings_screen.dart';
-import 'services/listnr_client.dart';
-import 'services/recording_upload.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  // 위젯을 앱을 열지 않고 직접 탭했을 때도 이 콜백이 백그라운드 Flutter
-  // 엔진에서 실행된다. (AudioWidgetProvider.kt가 정지 시 이 URI로 브로드캐스트)
-  await HomeWidget.registerInteractivityCallback(backgroundCallback);
+void main() {
   runApp(const MyApp());
-}
-
-@pragma('vm:entry-point')
-Future<void> backgroundCallback(Uri? uri) async {
-  if (uri?.host != 'transcribe') return;
-  try {
-    await uploadLatestRecording();
-  } catch (_) {
-    // 실패해도 원본 파일은 지워지지 않으니, 다음에 앱을 열었을 때
-    // 다시 시도할 수 있다.
-  }
 }
 
 class MyApp extends StatelessWidget {
@@ -56,9 +38,6 @@ class _RecorderHomePageState extends State<RecorderHomePage>
 
   bool _isRecording = false;
   bool _busy = false;
-  bool _isTranscribing = false;
-  String? _error;
-  Transcript? _transcript;
 
   @override
   void initState() {
@@ -105,59 +84,15 @@ class _RecorderHomePageState extends State<RecorderHomePage>
         return;
       }
       await _channel.invokeMethod('start');
-      if (mounted) {
-        setState(() {
-          _isRecording = true;
-          _busy = false;
-          _transcript = null;
-          _error = null;
-        });
-      }
     } else {
       await _channel.invokeMethod('stop');
-      if (mounted) {
-        setState(() {
-          _isRecording = false;
-          _busy = false;
-        });
-      }
-      await _transcribeLatestRecording();
     }
-  }
 
-  /// 녹음 정지 직후 앱이 포그라운드에 있을 때 호출된다. 위젯을 직접 탭해서
-  /// 앱 없이 정지한 경우는 [backgroundCallback]이 대신 처리한다 — 이때는
-  /// 다음에 앱을 열면 [_refreshState] 대신 여기로 다시 진입하지 않으므로,
-  /// 화면에는 반영되지 않고 위젯에만 결과가 남는다.
-  Future<void> _transcribeLatestRecording() async {
-    setState(() {
-      _isTranscribing = true;
-      _error = null;
-    });
-
-    try {
-      // MediaRecorder가 stop() 이후 파일을 마무리하는 데 약간의 시간이
-      // 걸릴 수 있어 짧게 대기한다.
-      await Future.delayed(const Duration(milliseconds: 300));
-
-      final result = await uploadLatestRecording();
-      if (result == null) {
-        throw Exception('녹음 파일을 찾을 수 없습니다.');
-      }
-
-      if (mounted) {
-        setState(() => _transcript = result);
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e is ListnrClientException ? e.message : e.toString();
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isTranscribing = false);
-      }
+    if (mounted) {
+      setState(() {
+        _isRecording = value;
+        _busy = false;
+      });
     }
   }
 
@@ -168,6 +103,13 @@ class _RecorderHomePageState extends State<RecorderHomePage>
         title: const Text('오디오 녹음 위젯'),
         actions: [
           IconButton(
+            tooltip: '녹음 파일',
+            icon: const Icon(Icons.folder_open),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const RecordingsListScreen()),
+            ),
+          ),
+          IconButton(
             tooltip: '서버 설정',
             icon: const Icon(Icons.settings_outlined),
             onPressed: () => Navigator.of(context).push(
@@ -176,165 +118,35 @@ class _RecorderHomePageState extends State<RecorderHomePage>
           ),
         ],
       ),
-      body: SafeArea(
+      body: Center(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 32),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildRecordControl(),
-              const SizedBox(height: 20),
-              Expanded(child: _buildResultArea()),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRecordControl() {
-    return Column(
-      children: [
-        Icon(
-          _isRecording ? Icons.mic : Icons.mic_none,
-          size: 72,
-          color: _isRecording ? Colors.red : Colors.grey,
-        ),
-        const SizedBox(height: 12),
-        SwitchListTile(
-          title: const Text('녹음'),
-          subtitle: Text(_isRecording ? '녹음 중입니다' : '대기 중'),
-          value: _isRecording,
-          onChanged: _busy || _isTranscribing ? null : _onToggle,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildResultArea() {
-    if (_isTranscribing) {
-      return const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 12),
-            Text('서버로 전송해서 변환하는 중...'),
-          ],
-        ),
-      );
-    }
-
-    if (_error != null) {
-      return Center(
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.red.shade50,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.red.shade200),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.error_outline, color: Colors.red.shade400, size: 32),
-              const SizedBox(height: 8),
+              Icon(
+                _isRecording ? Icons.mic : Icons.mic_none,
+                size: 96,
+                color: _isRecording ? Colors.red : Colors.grey,
+              ),
+              const SizedBox(height: 24),
+              SwitchListTile(
+                title: const Text('녹음'),
+                subtitle: Text(_isRecording ? '녹음 중입니다' : '대기 중'),
+                value: _isRecording,
+                onChanged: _busy ? null : _onToggle,
+              ),
+              const SizedBox(height: 32),
               Text(
-                _error!,
+                '녹음을 마치면 파일 목록에 저장돼요. 상단 폴더 아이콘에서 '
+                '변환할 파일을 골라 텍스트로 바꿀 수 있어요.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.red.shade700),
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],
           ),
         ),
-      );
-    }
-
-    if (_transcript == null) {
-      return Center(
-        child: Text(
-          '녹음을 마치면 변환된 텍스트가 여기에 표시돼요.',
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
-        ),
-      );
-    }
-
-    return _TranscriptCard(transcript: _transcript!);
-  }
-}
-
-class _TranscriptCard extends StatelessWidget {
-  final Transcript transcript;
-
-  const _TranscriptCard({required this.transcript});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      children: [
-        Card(
-          elevation: 0,
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.notes, color: Theme.of(context).colorScheme.primary),
-                    const SizedBox(width: 8),
-                    Text('변환 결과', style: Theme.of(context).textTheme.titleMedium),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  transcript.text.isEmpty ? '(인식된 텍스트가 없습니다)' : transcript.text,
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    Chip(
-                      avatar: const Icon(Icons.language, size: 16),
-                      label: Text(transcript.language),
-                    ),
-                    Chip(
-                      avatar: const Icon(Icons.timer_outlined, size: 16),
-                      label: Text('${transcript.duration.toStringAsFixed(1)}초'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-        if (transcript.segments.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Theme(
-            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-            child: ExpansionTile(
-              tilePadding: EdgeInsets.zero,
-              title: const Text('구간별로 보기'),
-              children: transcript.segments
-                  .map(
-                    (s) => ListTile(
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      leading: Text(
-                        '${s.start.toStringAsFixed(1)}s',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                      title: Text(s.text),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ),
-        ],
-      ],
+      ),
     );
   }
 }
