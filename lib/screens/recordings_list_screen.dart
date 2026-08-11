@@ -41,7 +41,7 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> {
   Future<void> _pickAudioFile() async {
     setState(() => _picking = true);
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.audio,
         withData: false,
       );
