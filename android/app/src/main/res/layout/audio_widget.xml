@@ -1,51 +1,75 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_card_idle"
-    android:orientation="horizontal"
-    android:gravity="center_vertical"
+    android:orientation="vertical"
     android:padding="16dp">
 
-    <FrameLayout
-        android:id="@+id/widget_icon_badge"
-        android:layout_width="52dp"
-        android:layout_height="52dp"
-        android:background="@drawable/icon_badge_idle">
-
-        <ImageView
-            android:id="@+id/widget_icon"
-            android:layout_width="26dp"
-            android:layout_height="26dp"
-            android:layout_gravity="center"
-            android:src="@drawable/ic_mic_white"
-            android:contentDescription="@string/audio_widget_description" />
-    </FrameLayout>
-
     <LinearLayout
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:layout_marginStart="14dp"
-        android:orientation="vertical">
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
 
-        <TextView
-            android:id="@+id/widget_title"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/audio_widget_title"
-            android:textColor="#FFFFFF"
-            android:textSize="15sp"
-            android:textStyle="bold" />
+        <FrameLayout
+            android:id="@+id/widget_icon_badge"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:background="@drawable/icon_badge_idle">
 
-        <TextView
-            android:id="@+id/widget_label"
-            android:layout_width="wrap_content"
+            <ImageView
+                android:id="@+id/widget_icon"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_mic_white"
+                android:contentDescription="@string/audio_widget_description" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:text="@string/audio_widget_label_idle"
-            android:textColor="#B3FFFFFF"
-            android:textSize="12sp" />
+            android:layout_weight="1"
+            android:layout_marginStart="14dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/widget_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/audio_widget_title"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="@string/audio_widget_label_idle"
+                android:textColor="#B3FFFFFF"
+                android:textSize="12sp" />
+        </LinearLayout>
     </LinearLayout>
+
+    <!-- 최근 변환 결과 미리보기. 결과가 없으면 코드에서 GONE 처리됨 -->
+    <TextView
+        android:id="@+id/widget_transcript_preview"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:paddingTop="10dp"
+        android:background="@null"
+        android:textColor="#E6FFFFFF"
+        android:textSize="13sp"
+        android:lineSpacingExtra="2dp"
+        android:maxLines="4"
+        android:ellipsize="end"
+        android:visibility="gone"
+        tools:text="여기에 최근 변환된 텍스트 미리보기가 표시됩니다." />
+
 </LinearLayout>

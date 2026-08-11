@@ -72,6 +72,18 @@ class AudioWidgetProvider : AppWidgetProvider() {
             views.setInt(R.id.widget_icon_badge, "setBackgroundResource", badgeBg)
             views.setTextViewText(R.id.widget_label, label)
 
+            // home_widget 플러그인이 Dart에서 저장한 최근 변환 결과를 읽어온다.
+            // (녹음 중일 때는 새로 채워지기 전이니 이전 결과를 그대로 보여준다)
+            val transcript = context
+                .getSharedPreferences("HomeWidgetPreferences", Context.MODE_PRIVATE)
+                .getString("transcript_text", null)
+            if (!transcript.isNullOrBlank()) {
+                views.setTextViewText(R.id.widget_transcript_preview, transcript)
+                views.setViewVisibility(R.id.widget_transcript_preview, android.view.View.VISIBLE)
+            } else {
+                views.setViewVisibility(R.id.widget_transcript_preview, android.view.View.GONE)
+            }
+
             val toggleIntent = Intent(context, AudioWidgetProvider::class.java)
                 .setAction(ACTION_TOGGLE_RECORDING)
             val pendingIntent = PendingIntent.getBroadcast(

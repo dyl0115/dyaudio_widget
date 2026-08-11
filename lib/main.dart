@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:home_widget/home_widget.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -132,6 +133,10 @@ class _RecorderHomePageState extends State<RecorderHomePage>
 
       final result = await ListnrClient.transcribe(file);
       await file.delete();
+
+      // 홈 화면 위젯에도 최근 변환 결과를 반영한다.
+      await HomeWidget.saveWidgetData<String>('transcript_text', result.text);
+      await HomeWidget.updateWidget(androidName: 'AudioWidgetProvider');
 
       if (mounted) {
         setState(() => _transcript = result);
