@@ -153,8 +153,16 @@ class AudioRecordingService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        // The body must open the app rather than toggle: tapping a notification's body
+        // on the lock screen always forces authentication, whereas its action buttons
+        // fire without unlocking. So the toggle lives only on the button.
+        val contentIntent = PendingIntent.getActivity(
+            this, 2, Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val label = if (active) "종료" else "시작"
-        val text = lastError ?: if (active) "진행 중 · 탭하여 종료" else "탭하여 시작"
+        val text = lastError ?: if (active) "진행 중 · 버튼으로 종료" else "버튼으로 시작"
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("dyaudio")
@@ -162,7 +170,7 @@ class AudioRecordingService : Service() {
             .setSmallIcon(android.R.drawable.ic_menu_edit)
             .setOngoing(true)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setContentIntent(pendingIntent)
+            .setContentIntent(contentIntent)
             .addAction(0, label, pendingIntent)
             .build()
     }
