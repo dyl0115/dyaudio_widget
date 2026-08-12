@@ -9,6 +9,7 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        RecordingController.ensureIdleNotification(applicationContext)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName).setMethodCallHandler { call, result ->
             when (call.method) {
                 "hasPermission" -> result.success(RecordingController.hasMicPermission(applicationContext))
