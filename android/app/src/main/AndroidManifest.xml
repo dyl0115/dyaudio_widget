@@ -36,6 +36,16 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
+        <activity
+            android:name=".RecordingTriggerActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
         <service
             android:name=".AudioRecordingService"
             android:exported="false"

@@ -69,13 +69,12 @@ object RecordingController {
             manager.createNotificationChannel(channel)
         }
 
-        // Targets the service directly (not a broadcast that then calls
-        // startForegroundService()) so tapping this from a locked screen isn't subject
-        // to background-start restrictions on newer Android versions — notification
-        // taps are exempted only for the component the PendingIntent directly launches.
-        val startIntent = Intent(context, AudioRecordingService::class.java)
-            .setAction(AudioRecordingService.ACTION_START)
-        val pendingIntent = PendingIntent.getForegroundService(
+        // Goes through RecordingTriggerActivity rather than starting the service
+        // directly: Android 14+ rejects a microphone foreground service started while
+        // the app is in the background, and the activity is what makes us foreground.
+        val startIntent = Intent(context, RecordingTriggerActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val pendingIntent = PendingIntent.getActivity(
             context, 1, startIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
