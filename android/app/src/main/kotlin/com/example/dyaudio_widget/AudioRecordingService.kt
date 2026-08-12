@@ -20,36 +20,68 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+/**
+ * Stays alive as a foreground service even while idle ("armed"), so that starting
+ * capture later is just a message to an already-running service.
+ *
+ * This matters because Android 14+ refuses to start a microphone foreground service
+ * while the app is in the background — which is exactly the situation when the trigger
+ * comes from the lock screen. Arming happens when the app is opened (foreground, so
+ * it's allowed), and the while-in-use grant then lives with the service, the same way
+ * a voice recorder keeps recording after you lock the phone.
+ */
 class AudioRecordingService : Service() {
 
     private var recorder: MediaRecorder? = null
+    private var lastError: String? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Always (re-)enter the foreground first: on the arm path this is what captures
+        // the while-in-use grant, and on later paths it's a no-op refresh.
+        enterForeground()
+
         when (intent?.action) {
+            ACTION_START -> {
+                startRecording()
+                RecordingController.setRecording(applicationContext, recorder != null)
+            }
             ACTION_STOP -> {
                 stopRecording()
                 RecordingController.setRecording(applicationContext, false)
-                stopSelf()
             }
-            else -> {
-                val serviceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-                } else {
-                    0
-                }
-                ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(), serviceType)
-                RecordingController.setRecording(applicationContext, true)
-                startRecording()
-            }
+            // ACTION_ARM, and the null intent redelivered when START_STICKY restarts us,
+            // both just mean "stay alive, idle" — never start capture off a null intent.
+            else -> RecordingController.setRecording(applicationContext, false)
         }
-        return START_NOT_STICKY
+        refreshNotification()
+        return START_STICKY
     }
 
     override fun onDestroy() {
         stopRecording()
         super.onDestroy()
+    }
+
+    private fun enterForeground() {
+        val serviceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+        } else {
+            0
+        }
+        try {
+            ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(), serviceType)
+        } catch (e: Exception) {
+            // Surface it in the notification instead of dying silently, so the failure
+            // is readable on the device without a debugger attached.
+            lastError = e.javaClass.simpleName + ": " + e.message
+        }
+    }
+
+    private fun refreshNotification() {
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.notify(NOTIFICATION_ID, buildNotification())
     }
 
     private fun startRecording() {
@@ -81,11 +113,11 @@ class AudioRecordingService : Service() {
             mr.prepare()
             mr.start()
             recorder = mr
+            lastError = null
         } catch (e: Exception) {
             recorder?.release()
             recorder = null
-            RecordingController.stop(applicationContext)
-            stopSelf()
+            lastError = e.javaClass.simpleName + ": " + e.message
         }
     }
 
@@ -107,29 +139,36 @@ class AudioRecordingService : Service() {
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "녹음 중 알림",
+                "dyaudio",
                 NotificationManager.IMPORTANCE_LOW
             )
             manager.createNotificationChannel(channel)
         }
 
-        val stopIntent = Intent(this, AudioRecordingService::class.java).setAction(ACTION_STOP)
-        val stopPendingIntent = PendingIntent.getService(
-            this, 0, stopIntent,
+        val active = recorder != null
+        val action = if (active) ACTION_STOP else ACTION_START
+        val intent = Intent(this, AudioRecordingService::class.java).setAction(action)
+        val pendingIntent = PendingIntent.getService(
+            this, 0, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val label = if (active) "종료" else "시작"
+        val text = lastError ?: if (active) "진행 중 · 탭하여 종료" else "탭하여 시작"
+
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("녹음 중")
-            .setContentText("탭하여 앱을 열거나 중지 버튼을 누르세요")
-            .setSmallIcon(android.R.drawable.ic_btn_speak_now)
+            .setContentTitle("dyaudio")
+            .setContentText(text)
+            .setSmallIcon(android.R.drawable.ic_menu_edit)
             .setOngoing(true)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .addAction(0, "중지", stopPendingIntent)
+            .setContentIntent(pendingIntent)
+            .addAction(0, label, pendingIntent)
             .build()
     }
 
     companion object {
+        const val ACTION_ARM = "com.example.dyaudio_widget.action.ARM"
         const val ACTION_START = "com.example.dyaudio_widget.action.START"
         const val ACTION_STOP = "com.example.dyaudio_widget.action.STOP"
         private const val CHANNEL_ID = "audio_recording_channel"

@@ -9,13 +9,13 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        RecordingController.ensureIdleNotification(applicationContext)
+        RecordingController.arm(applicationContext)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName).setMethodCallHandler { call, result ->
             when (call.method) {
                 "hasPermission" -> result.success(RecordingController.hasMicPermission(applicationContext))
                 "isRecording" -> result.success(RecordingController.isRecording(applicationContext))
-                "ensureIdleNotification" -> {
-                    RecordingController.ensureIdleNotification(applicationContext)
+                "arm" -> {
+                    RecordingController.arm(applicationContext)
                     result.success(null)
                 }
                 "toggle" -> {

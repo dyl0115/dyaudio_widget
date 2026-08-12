@@ -1,25 +1,18 @@
 package com.example.dyaudio_widget
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 
 /**
- * Single source of truth for recording state. Both the home screen widget
- * and the in-app toggle go through here so they always agree on state.
+ * Single source of truth for recording state. The home screen widget, the in-app
+ * toggle and the notification all go through here so they always agree on state.
  */
 object RecordingController {
     private const val PREFS_NAME = "audio_widget_prefs"
     private const val KEY_IS_RECORDING = "is_recording"
-    private const val IDLE_CHANNEL_ID = "idle_trigger_channel"
-    private const val IDLE_NOTIFICATION_ID = 43
 
     fun hasMicPermission(context: Context): Boolean {
         return ContextCompat.checkSelfPermission(
@@ -32,66 +25,22 @@ object RecordingController {
         return prefs(context).getBoolean(KEY_IS_RECORDING, false)
     }
 
-    /** Shows the "탭하여 시작" lock-screen-visible notification if we're idle. Call on app open. */
-    fun ensureIdleNotification(context: Context) {
-        if (!isRecording(context)) {
-            showIdleNotification(context)
-        }
+    /**
+     * Brings the service up in its idle state so the lock-screen notification exists and,
+     * more importantly, so later starts are messages to a running service rather than a
+     * background service start (which Android 14+ rejects for microphone). Only safe to
+     * call while the app is in the foreground — i.e. from the app being opened.
+     */
+    fun arm(context: Context) {
+        if (!hasMicPermission(context) || isRecording(context)) return
+        val intent = Intent(context, AudioRecordingService::class.java)
+            .setAction(AudioRecordingService.ACTION_ARM)
+        startService(context, intent)
     }
 
-    // Called by AudioRecordingService itself once it actually starts/stops, and also
-    // by start()/stop() below for the widget/app-switch entry points. Idempotent, so
-    // it's safe for both call sites to invoke it for the same transition.
     fun setRecording(context: Context, recording: Boolean) {
         prefs(context).edit().putBoolean(KEY_IS_RECORDING, recording).apply()
         AudioWidgetProvider.updateAllWidgets(context)
-        if (recording) {
-            NotificationManagerCompat.from(context).cancel(IDLE_NOTIFICATION_ID)
-        } else {
-            showIdleNotification(context)
-        }
-    }
-
-    private fun showIdleNotification(context: Context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
-            return
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            val channel = NotificationChannel(
-                IDLE_CHANNEL_ID,
-                "녹음 대기 알림",
-                NotificationManager.IMPORTANCE_LOW
-            )
-            manager.createNotificationChannel(channel)
-        }
-
-        // Goes through RecordingTriggerActivity rather than starting the service
-        // directly: Android 14+ rejects a microphone foreground service started while
-        // the app is in the background, and the activity is what makes us foreground.
-        val startIntent = Intent(context, RecordingTriggerActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        val pendingIntent = PendingIntent.getActivity(
-            context, 1, startIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val notification = NotificationCompat.Builder(context, IDLE_CHANNEL_ID)
-            .setContentTitle("녹음 대기 중")
-            .setContentText("탭하여 바로 녹음을 시작하세요")
-            .setSmallIcon(android.R.drawable.ic_btn_speak_now)
-            .setOngoing(true)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            // Bind the whole notification body to the same action, not just the button
-            // chip: some lock screens render/behave differently for addAction() buttons
-            // than for the primary content tap, so this is a more robust target.
-            .setContentIntent(pendingIntent)
-            .addAction(0, "시작", pendingIntent)
-            .build()
-        NotificationManagerCompat.from(context).notify(IDLE_NOTIFICATION_ID, notification)
     }
 
     /** Returns the new recording state, or null if permission is missing. */
@@ -112,11 +61,7 @@ object RecordingController {
         if (isRecording(context)) return
         val intent = Intent(context, AudioRecordingService::class.java)
             .setAction(AudioRecordingService.ACTION_START)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.startForegroundService(intent)
-        } else {
-            context.startService(intent)
-        }
+        startService(context, intent)
         setRecording(context, true)
     }
 
@@ -124,8 +69,16 @@ object RecordingController {
         if (!isRecording(context)) return
         val intent = Intent(context, AudioRecordingService::class.java)
             .setAction(AudioRecordingService.ACTION_STOP)
-        context.startService(intent)
+        startService(context, intent)
         setRecording(context, false)
+    }
+
+    private fun startService(context: Context, intent: Intent) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(intent)
+        } else {
+            context.startService(intent)
+        }
     }
 
     private fun prefs(context: Context) =
