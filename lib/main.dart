@@ -47,9 +47,11 @@ class _RecorderHomePageState extends State<RecorderHomePage>
   }
 
   Future<void> _requestNotificationPermission() async {
-    // Needed on Android 13+ so the "탭하여 시작" lock-screen notification can show.
+    // Both permissions have to land before arming: the notification is how the
+    // lock-screen trigger is surfaced, and arming needs the mic grant to stick.
+    await Permission.microphone.request();
     await Permission.notification.request();
-    await _channel.invokeMethod('ensureIdleNotification');
+    await _channel.invokeMethod('arm');
   }
 
   @override
