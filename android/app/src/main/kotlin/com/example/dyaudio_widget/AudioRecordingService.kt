@@ -30,6 +30,7 @@ class AudioRecordingService : Service() {
         when (intent?.action) {
             ACTION_STOP -> {
                 stopRecording()
+                RecordingController.setRecording(applicationContext, false)
                 stopSelf()
             }
             else -> {
@@ -39,6 +40,7 @@ class AudioRecordingService : Service() {
                     0
                 }
                 ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(), serviceType)
+                RecordingController.setRecording(applicationContext, true)
                 startRecording()
             }
         }

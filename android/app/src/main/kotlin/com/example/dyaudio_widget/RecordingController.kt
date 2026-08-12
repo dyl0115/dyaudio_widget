@@ -39,7 +39,10 @@ object RecordingController {
         }
     }
 
-    private fun setRecording(context: Context, recording: Boolean) {
+    // Called by AudioRecordingService itself once it actually starts/stops, and also
+    // by start()/stop() below for the widget/app-switch entry points. Idempotent, so
+    // it's safe for both call sites to invoke it for the same transition.
+    fun setRecording(context: Context, recording: Boolean) {
         prefs(context).edit().putBoolean(KEY_IS_RECORDING, recording).apply()
         AudioWidgetProvider.updateAllWidgets(context)
         if (recording) {
@@ -49,9 +52,6 @@ object RecordingController {
         }
     }
 
-    // Tapping "시작" sends the same broadcast the widget tap does, so this stays a
-    // notification action rather than a foreground service: no need to keep anything
-    // running while idle, and it reuses RecordingController.toggle() via the receiver.
     private fun showIdleNotification(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS)
@@ -69,10 +69,14 @@ object RecordingController {
             manager.createNotificationChannel(channel)
         }
 
-        val toggleIntent = Intent(context, AudioWidgetProvider::class.java)
-            .setAction(AudioWidgetProvider.ACTION_TOGGLE_RECORDING)
-        val pendingIntent = PendingIntent.getBroadcast(
-            context, 1, toggleIntent,
+        // Targets the service directly (not a broadcast that then calls
+        // startForegroundService()) so tapping this from a locked screen isn't subject
+        // to background-start restrictions on newer Android versions — notification
+        // taps are exempted only for the component the PendingIntent directly launches.
+        val startIntent = Intent(context, AudioRecordingService::class.java)
+            .setAction(AudioRecordingService.ACTION_START)
+        val pendingIntent = PendingIntent.getForegroundService(
+            context, 1, startIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
