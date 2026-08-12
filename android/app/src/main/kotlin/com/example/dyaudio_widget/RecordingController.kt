@@ -81,6 +81,7 @@ object RecordingController {
             .setContentText("탭하여 바로 녹음을 시작하세요")
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setOngoing(true)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .addAction(0, "시작", pendingIntent)
             .build()
         NotificationManagerCompat.from(context).notify(IDLE_NOTIFICATION_ID, notification)
