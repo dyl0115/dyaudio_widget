@@ -86,6 +86,10 @@ object RecordingController {
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setOngoing(true)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            // Bind the whole notification body to the same action, not just the button
+            // chip: some lock screens render/behave differently for addAction() buttons
+            // than for the primary content tap, so this is a more robust target.
+            .setContentIntent(pendingIntent)
             .addAction(0, "시작", pendingIntent)
             .build()
         NotificationManagerCompat.from(context).notify(IDLE_NOTIFICATION_ID, notification)
