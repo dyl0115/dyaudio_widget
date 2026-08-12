@@ -122,6 +122,7 @@ class AudioRecordingService : Service() {
             .setContentText("탭하여 앱을 열거나 중지 버튼을 누르세요")
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setOngoing(true)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .addAction(0, "중지", stopPendingIntent)
             .build()
     }
