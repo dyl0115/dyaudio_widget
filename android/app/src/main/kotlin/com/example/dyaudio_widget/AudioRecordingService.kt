@@ -8,6 +8,8 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
 import android.media.MediaRecorder
 import android.os.Build
 import android.os.IBinder
@@ -63,6 +65,14 @@ class AudioRecordingService : Service() {
                 MediaRecorder()
             }
             mr.setAudioSource(MediaRecorder.AudioSource.MIC)
+            // Pin capture to the built-in mic even if a Bluetooth audio device is
+            // connected, since SCO/HFP mic input is narrowband and sounds much worse.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                audioManager.getDevices(AudioManager.GET_DEVICES_INPUTS)
+                    .firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_MIC }
+                    ?.let { mr.setPreferredDevice(it) }
+            }
             mr.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
             mr.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
             mr.setOutputFile(outputFile.absolutePath)
