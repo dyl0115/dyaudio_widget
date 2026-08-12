@@ -44,6 +44,13 @@ class _RecorderHomePageState extends State<RecorderHomePage>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _refreshState();
+    _requestNotificationPermission();
+  }
+
+  Future<void> _requestNotificationPermission() async {
+    // Needed on Android 13+ so the "탭하여 시작" lock-screen notification can show.
+    await Permission.notification.request();
+    await _channel.invokeMethod('ensureIdleNotification');
   }
 
   @override

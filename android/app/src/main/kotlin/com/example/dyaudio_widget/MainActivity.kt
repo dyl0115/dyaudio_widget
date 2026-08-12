@@ -14,6 +14,10 @@ class MainActivity : FlutterActivity() {
             when (call.method) {
                 "hasPermission" -> result.success(RecordingController.hasMicPermission(applicationContext))
                 "isRecording" -> result.success(RecordingController.isRecording(applicationContext))
+                "ensureIdleNotification" -> {
+                    RecordingController.ensureIdleNotification(applicationContext)
+                    result.success(null)
+                }
                 "toggle" -> {
                     val newState = RecordingController.toggle(applicationContext)
                     result.success(newState)
